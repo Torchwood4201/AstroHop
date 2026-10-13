@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Astro Hop</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        background: #1b1b22;
+        overflow: hidden;
+        /* no scrolling, zooming or pull-to-refresh while playing */
+        touch-action: none;
+        overscroll-behavior: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      #app {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      /* Game viewport — Phaser's Scale.FIT keeps the 16:9 canvas inside this box */
+      #game-container {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+      }
+
+      /* ---- GBA-style control area (portrait: below the game) ---- */
+      #touch-controls {
+        display: none;
+        height: 34%;
+        max-height: 230px;
+        /* generous side padding keeps thumbs out of Android's
+           edge-swipe (back gesture) zones */
+        padding: 14px calc(30px + env(safe-area-inset-right))
+          calc(14px + env(safe-area-inset-bottom))
+          calc(30px + env(safe-area-inset-left));
+        align-items: center;
+        justify-content: space-evenly;
+        background: linear-gradient(#2b2b34, #232329);
+        border-top: 2px solid #3a3a46;
+      }
+
+      body.touch #touch-controls {
+        display: flex;
+      }
+
+      /* swapped = arrows on the right, action buttons on the left */
+      #touch-controls.swapped {
+        flex-direction: row-reverse;
+      }
+
+      /* ---- swap toggle bar (between the game and the controls) ---- */
+      #controls-bar {
+        display: none;
+      }
+
+      body.touch #controls-bar {
+        display: flex;
+        justify-content: center;
+        padding: 6px calc(8px + env(safe-area-inset-right)) 6px
+          calc(8px + env(safe-area-inset-left));
+        background: #232329;
+        border-top: 1px solid #3a3a46;
+      }
+
+      #swap-controls {
+        border: none;
+        border-radius: 8px;
+        background: #3c3c46;
+        color: #cfcfd8;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 7px 16px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      #swap-controls:active {
+        filter: brightness(1.3);
+      }
+
+      .dpad {
+        display: grid;
+        grid-template-columns: 56px 56px 56px;
+        grid-template-rows: 56px 56px;
+        gap: 8px;
+      }
+
+      #btn-left {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      #btn-right {
+        grid-column: 3;
+        grid-row: 1;
+      }
+      #btn-down {
+        grid-column: 2;
+        grid-row: 2;
+      }
+
+      .actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 16px;
+      }
+
+      .ctrl {
+        border: none;
+        border-radius: 12px;
+        background: #3c3c46;
+        color: #cfcfd8;
+        font-size: 24px;
+        font-family: monospace;
+        box-shadow: 0 4px 0 #15151a;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .btn-a {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: #a83246;
+        color: #ffe3e8;
+        box-shadow: 0 4px 0 #5e1c28;
+        margin-bottom: 30px;
+      }
+
+      .btn-b {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: #b8742a;
+        color: #fff3dd;
+        box-shadow: 0 4px 0 #6b3f12;
+      }
+
+      .ctrl.pressed {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 #15151a;
+        filter: brightness(1.3);
+      }
+
+      /* ---- narrow phones: shrink the buttons so everything fits ---- */
+      @media (max-width: 430px) {
+        #touch-controls {
+          padding-left: calc(24px + env(safe-area-inset-left));
+          padding-right: calc(24px + env(safe-area-inset-right));
+        }
+
+        .dpad {
+          grid-template-columns: 50px 50px 50px;
+          grid-template-rows: 50px 50px;
+          gap: 7px;
+        }
+
+        .btn-a,
+        .btn-b {
+          width: 64px;
+          height: 64px;
+        }
+
+        .actions {
+          gap: 10px;
+        }
+      }
+
+      /* ---- portrait: pin the game to the top, controls take the rest.
+             6/5 matches the narrower 540x450 logical view set in main.js ---- */
+      @media (orientation: portrait) {
+        body.touch #game-container {
+          flex: 0 0 auto;
+          width: 100%;
+          aspect-ratio: 6 / 5;
+        }
+
+        body.touch #touch-controls {
+          flex: 1;
+          height: auto;
+          max-height: none;
+        }
+      }
+
+      /* ---- landscape: not enough height to stack — overlay the sides ---- */
+      @media (orientation: landscape) and (max-height: 520px) {
+        body.touch #touch-controls {
+          position: fixed;
+          inset: 0;
+          height: auto;
+          max-height: none;
+          background: none;
+          border: 0;
+          pointer-events: none; /* only the buttons catch touches */
+          align-items: flex-end;
+          justify-content: space-between;
+          padding: 0 calc(34px + env(safe-area-inset-right))
+            calc(16px + env(safe-area-inset-bottom))
+            calc(34px + env(safe-area-inset-left));
+        }
+
+        body.touch .dpad,
+        body.touch .actions {
+          pointer-events: auto;
+          opacity: 0.55;
+        }
+      }
+
+      /* ---- only if it truly cannot fit ---- */
+      #rotate-hint {
+        display: none;
+      }
+
+      @media (orientation: landscape) and (max-height: 280px) {
+        body.touch #rotate-hint {
+          position: fixed;
+          inset: 0;
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #1b1b22ee;
+          color: #ffffff;
+          font-family: monospace;
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="game-container"></div>
+      <div id="controls-bar">
+        <button id="swap-controls" type="button" tabindex="-1">&#8644; Swap controls</button>
+      </div>
+      <div id="touch-controls">
+        <div class="dpad">
+          <button class="ctrl" id="btn-left" data-key="left" tabindex="-1">&#9664;</button>
+          <button class="ctrl" id="btn-right" data-key="right" tabindex="-1">&#9654;</button>
+          <button class="ctrl" id="btn-down" data-key="down" tabindex="-1">&#9660;</button>
+        </div>
+        <div class="actions">
+          <button class="ctrl btn-b" id="btn-fire" data-key="fire" tabindex="-1">B</button>
+          <button class="ctrl btn-a" id="btn-jump" data-key="jump" tabindex="-1">A</button>
+        </div>
+      </div>
+    </div>
+    <div id="rotate-hint">&#10227; Rotate your device</div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
