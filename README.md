@@ -1,6 +1,6 @@
-# Astro Hop 👾
+# Timber Hop 🪓
 
-Astro Hop is a retro, Mario-style 2D platformer built with Phaser 3 and Vite (vanilla JS), playable on desktop and mobile from the same URL and deployed to GitHub Pages.
+Timber Hop is a retro, Mario-style 2D platformer starring a Canadian lumberjack, built with Phaser 3 and Vite (vanilla JS), playable on desktop and mobile from the same URL and deployed to GitHub Pages.
 The project has two goals running in parallel. The first is hands-on game development — physics and game feel, sprite animation, tilemap level design, power-up state machines, mobile touch controls, and a full game-flow loop. The second is using the build as a way to understand the Claude Fable 5 model: how far it can be pushed as a coding partner, where it excels, and where it needs steering, across everything from architecture decisions to spritesheet analysis and asset generation.
 Built with original assets (not Nintendo IP), starting from Kenney.nl's CC0 pixel-art packs.
 
@@ -11,12 +11,12 @@ Built with original assets (not Nintendo IP), starting from Kenney.nl's CC0 pixe
 ## Features
 
 - Classic mechanics: run & jump with proper game feel (acceleration,
-  variable jump height), coin collecting, stompable enemies, breakable
-  bricks and question blocks
-- Power-ups: grow mushroom, fire gem (bouncing fireballs), invincibility
-  star — with a SMALL → BIG → FIRE state machine
-- Two hand-built levels (sunny overworld + underground cave), a secret
-  coin vault behind a pipe, a hidden 1-UP block, flagpole finishes with
+  variable jump height), coin collecting, stompable beavers, breakable
+  crates and question blocks
+- Power-ups: poutine lunchbox (grow), ember shirt (thrown axes),
+  invincibility star — with a SMALL → BIG → FIRE state machine
+- Six hand-built camps (pine timberland, mine, frozen north), secret
+  hollow-log tunnels, a hidden 1-UP lunch, flagpole finishes with
   height bonus
 - Full game flow: title screen, intro cards, lives, level timer, pause
   menu, game over, persistent high score
@@ -47,7 +47,7 @@ Then open the URL Vite prints (usually `http://localhost:5173`).
 | Move   | Arrow keys or A/D | On-screen ◀ ▶ |
 | Enter pipe | ↓ or S | On-screen ▼ |
 | Jump   | Space, W or ↑ (hold for higher jump) | On-screen **A** button |
-| Fireball (FIRE state) | Shift or X | On-screen **B** button |
+| Fire / axe (FIRE state) | Shift or X | On-screen **B** button |
 | Pause  | Esc or P | ▐▐ button (top right) |
 | Sound on/off | ♪ button | ♪ button |
 | Fullscreen | ⛶ button | ⛶ button (Android) |
@@ -75,5 +75,6 @@ phone's browser.
 
 - Code, levels and synthesized audio: made for this project — [MIT](LICENSE)
 - Art: [Pixel Platformer](https://kenney.nl/assets/pixel-platformer) by
-  [Kenney](https://kenney.nl) — License: [CC0](https://creativecommons.org/publicdomain/zero/1.0/)
+  [Kenney](https://kenney.nl) — License: [CC0](https://creativecommons.org/publicdomain/zero/1.0/);
+  lumberjack, beaver, poutine, axe and hollow-log sprites hand-drawn in code
 - Engine: [Phaser 3](https://phaser.io/) (MIT)

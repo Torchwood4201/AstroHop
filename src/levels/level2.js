@@ -1,12 +1,12 @@
 import { sparse, ground, gap } from './builder.js';
 
-// WORLD 1-2 — underground: cave ceiling, darker palette, more vertical
+// CAMP 1-2 — the mine: timbered ceiling, darker palette, more vertical
 // platforming. Full 25 rows (the ceiling needs the top of the world).
 
 const W = 200;
 
 export default {
-  name: 'WORLD 1-2',
+  name: 'CAMP 1-2',
   theme: 'underground',
   next: 'level3',
   width: W,

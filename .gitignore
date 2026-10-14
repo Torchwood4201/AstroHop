@@ -22,3 +22,17 @@ tools/_*
 .idea/
 .DS_Store
 Thumbs.db
+
+screenshots/
+
+*.pid
+
+.agents/
+
+.agentsweb/
+
+.omgithub-runtime/
+
+.opencode-ssh/
+
+.opencode-web/

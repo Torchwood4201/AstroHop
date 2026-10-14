@@ -5,7 +5,7 @@ Levels live in `src/levels/` as plain JS modules and are registered in
 
 ```js
 export default {
-  name: 'WORLD 1-1',        // shown in the HUD / intro card
+  name: 'CAMP 1-1',         // shown in the HUD / intro card
   theme: 'overworld',       // 'overworld' | 'underground' | 'snow' (see THEMES in index.js)
   next: 'level2',           // level id loaded after the flag ('end' = world-complete screen)
   time: 300,                // optional — level timer in seconds (default 300)
@@ -35,16 +35,17 @@ export default {
 | `X`  | solid terrain (auto-textured: top tile when nothing above, fill below) |
 | `x`  | decorative terrain — drawn exactly like `X` but with NO collision (castles, background structures the player walks in front of) |
 | `P`  | platform bar (auto rounded caps at the ends of each run) |
-| `B`  | breakable brick |
+| `-`  | one-way platform bar (SMW-port: jump up through it, land on top; same sprites as `P`) |
+| `B`  | breakable crate |
 | `?`  | question block containing a coin |
-| `M`  | question block containing a power-up (mushroom if SMALL, fire gem otherwise) |
+| `M`  | question block containing a power-up (poutine if SMALL, ember otherwise) |
 | `S`  | question block containing a star |
-| `H`  | hidden invisible block with a 1-UP (appears when hit from below) |
+| `H`  | hidden invisible block with a 1-UP lunch (appears when hit from below) |
 | `c`  | coin |
-| `e`  | walker enemy spawn |
+| `e`  | beaver enemy spawn |
 | `p`  | player spawn |
-| `T`  | pipe (top-left corner; 2 tiles wide, extends down to the terrain below) |
-| `t`  | enterable pipe — secret entrance (uses `secret`) or, in a bonus room, the exit |
+| `T`  | hollow log (top-left corner; 2 tiles wide, extends down to the terrain below) |
+| `t`  | enterable log — secret entrance (uses `secret`) or, in a bonus room, the exit |
 | `F`  | flagpole top (pole extends down to the terrain below) |
 | `d`  | level-end door (bottom tile; the top half is drawn above automatically) |
 | `>`  | decoration: arrow sign |
@@ -53,7 +54,7 @@ export default {
 | `"`  | decoration: sprout |
 | `o`  | decoration: snowman |
 
-**Pipes are 2 columns wide** — leave the column to the right of `T`/`t` empty.
+**Logs are 2 columns wide** — leave the column to the right of `T`/`t` empty.
 
 ## Authoring tips
 

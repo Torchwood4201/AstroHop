@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { LEVELS } from '../levels/index.js';
 
-// The black card between levels: "WORLD 1-1" + lives, ~2 seconds.
+// The black card between levels: "CAMP 1-1" + lives, ~2 seconds.
 export default class IntroScene extends Phaser.Scene {
   constructor() {
     super('IntroScene');
@@ -27,8 +27,8 @@ export default class IntroScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // lives: the hero's face next to the count
-    this.add.sprite(width / 2 - 30, height / 2 + 14, 'chars', 0);
+    // lives: the jack's face next to the count
+    this.add.sprite(width / 2 - 30, height / 2 + 14, 'jack-0');
     this.add
       .text(width / 2 + 4, height / 2 + 14, `× ${this.registry.get('lives') ?? 3}`, {
         fontFamily: 'monospace',

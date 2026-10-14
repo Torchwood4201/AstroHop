@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import Player from '../objects/Player.js';
+import Player, { FRAME_HALF_H } from '../objects/Player.js';
 import Walker from '../objects/Walker.js';
 import { touchState } from '../input/TouchControls.js';
 import { LEVELS, THEMES } from '../levels/index.js';
@@ -28,8 +28,7 @@ const T = {
   COIN: 151,
   BLOCK_QUESTION: 10,
   BLOCK_USED: 31,
-  BRICK: 6,
-  MUSHROOM: 128,
+  BRICK: 6, // nailed crate — already camp timber
   POLE: 131,
   FLAG: 111,
   DOOR_TOP: 130,
@@ -40,9 +39,9 @@ const DECOR = { '>': T.SIGN_RIGHT, '*': T.BUSH, '^': T.PINE, '"': T.SPROUT, o: 1
 
 const STOMP_BOUNCE = -300;
 
-// ---- Fireballs ----
+// ---- Thrown axes (EMBER state) ----
 const FIREBALL_SPEED = 300;
-const FIREBALL_BOUNCE_VY = -170; // low hop so small enemies can't be jumped over
+const FIREBALL_BOUNCE_VY = -170; // low hop so small beavers can't be jumped over
 const FIREBALL_LIFETIME = 3000;
 const MAX_FIREBALLS = 2;
 
@@ -78,7 +77,7 @@ export default class GameScene extends Phaser.Scene {
     this.worldWidth = this.level.width * TILE;
 
     if (!this.scene.isActive('HUDScene')) this.scene.launch('HUDScene');
-    this.registry.set('world', this.level.name.replace(/^WORLD\s*/, ''));
+    this.registry.set('world', this.level.name.replace(/^CAMP\s*/, ''));
     this.setupTimer();
     this.setupPause();
 
@@ -93,6 +92,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.solids = [];
     this.blocks = this.physics.add.staticGroup();
+    this.oneways = this.physics.add.staticGroup();
     this.coins = this.add.group();
     this.enemies = this.add.group();
     this.items = this.physics.add.group();
@@ -118,13 +118,17 @@ export default class GameScene extends Phaser.Scene {
     // --- Physics wiring
     this.physics.add.collider(this.player, this.solids);
     this.physics.add.collider(this.player, this.blocks, this.onPlayerBlockCollide, null, this);
+    this.physics.add.collider(this.player, this.oneways);
     this.physics.add.collider(this.enemies, this.solids);
     this.physics.add.collider(this.enemies, this.blocks);
+    this.physics.add.collider(this.enemies, this.oneways);
     this.physics.add.collider(this.enemies, this.enemies);
     this.physics.add.collider(this.items, this.solids, this.onItemBounce, null, this);
     this.physics.add.collider(this.items, this.blocks, this.onItemBounce, null, this);
+    this.physics.add.collider(this.items, this.oneways);
     this.physics.add.collider(this.fireballs, this.solids, this.onFireballBounce, null, this);
     this.physics.add.collider(this.fireballs, this.blocks, this.onFireballBounce, null, this);
+    this.physics.add.collider(this.fireballs, this.oneways, this.onFireballBounce, null, this);
     this.physics.add.overlap(this.player, this.coins, this.onCollectCoin, null, this);
     this.physics.add.overlap(this.player, this.items, this.onCollectItem, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.onPlayerEnemyContact, null, this);
@@ -188,6 +192,14 @@ export default class GameScene extends Phaser.Scene {
           const start = col;
           while (col < width && grid[row][col] === 'P') col++;
           this.buildPlatform(start, col - start, row);
+          continue;
+        }
+
+        if (ch === '-') {
+          // one-way platform (SMW-port): jump through from below, land on top
+          const start = col;
+          while (col < width && grid[row][col] === '-') col++;
+          this.buildOneWay(start, col - start, row);
           continue;
         }
 
@@ -273,12 +285,37 @@ export default class GameScene extends Phaser.Scene {
     this.addSolid(startCol * TILE + (run * TILE) / 2, y, run * TILE, TILE);
   }
 
+  /**
+   * One-way platform (SMW-port, mirrors SuperMarioWorldJS oneWayCollision):
+   * only the TOP collides — jump up through it, land when falling onto it.
+   * Uses the same platform sprites, one static body per run.
+   */
+  buildOneWay(startCol, run, row) {
+    const y = row * TILE + TILE / 2;
+    for (let i = 0; i < run; i++) {
+      let frame = T.PLATFORM_MID;
+      if (run === 1) frame = T.PLATFORM_SINGLE;
+      else if (i === 0) frame = T.PLATFORM_LEFT;
+      else if (i === run - 1) frame = T.PLATFORM_RIGHT;
+      this.add.image((startCol + i) * TILE + TILE / 2, y, 'tiles', frame).setAlpha(0.92);
+    }
+    const cx = startCol * TILE + (run * TILE) / 2;
+    const platform = this.oneways.create(cx, y, 'tiles', T.PLATFORM_MID);
+    platform.setVisible(false);
+    platform.body.setSize(run * TILE, 8);
+    platform.refreshBody();
+    // only collide from above (Phaser Arcade one-way pattern)
+    platform.body.checkCollision.down = false;
+    platform.body.checkCollision.left = false;
+    platform.body.checkCollision.right = false;
+  }
+
   buildPipe(col, topRow, enterable) {
     const bottomRow = this.findFloorRow(col, topRow);
     const cx = (col + 1) * TILE; // centre of the 2-tile-wide pipe
 
-    // depth 3: pipes render in FRONT of the player, so emerging from
-    // (or sinking into) a pipe clips the sprite like in classic Mario
+    // depth 3: logs render in FRONT of the player, so emerging from
+    // (or sinking into) a hollow log clips the sprite like diving into timber
     this.add.image(cx, topRow * TILE + TILE / 2, 'pipe-mouth').setDepth(3);
     const shaftH = (bottomRow - topRow - 1) * TILE;
     if (shaftH > 0) {
@@ -362,7 +399,7 @@ export default class GameScene extends Phaser.Scene {
     const floorRow = this.findFloorRow(col, fromRow);
     const feetY = floorRow * TILE;
 
-    this.player = new Player(this, col * TILE + TILE / 2, feetY - 24);
+    this.player = new Player(this, col * TILE + TILE / 2, feetY - FRAME_HALF_H * 2);
     if (this.startPower !== 'SMALL') {
       this.player.powerState = this.startPower;
       this.player.applyState();
@@ -380,7 +417,7 @@ export default class GameScene extends Phaser.Scene {
       this.autoPhase = 'pipe';
       this.tweens.add({
         targets: this.player,
-        y: mouthY - 12 * this.player.scale,
+        y: mouthY - FRAME_HALF_H * this.player.scale,
         duration: 600,
         ease: 'Sine.easeOut',
         onComplete: () => {
@@ -393,15 +430,17 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // feet exactly on the floor, whatever the current scale
-    this.player.y = feetY - 12 * this.player.scale;
+    this.player.y = feetY - FRAME_HALF_H * this.player.scale;
     this.player.body.reset(this.player.x, this.player.y);
   }
 
   // ----------------------------------------------------------- parallax
 
   buildParallax() {
+    // pine forest behind the timberland, pale hills behind the frozen north
+    const hillsKey = this.level.theme === 'snow' ? 'tex-hills-snow' : 'tex-hills';
     this.hills = this.add
-      .tileSprite(GAME_WIDTH / 2, 414 - 36, Math.ceil(GAME_WIDTH / 3), 24, 'tex-hills')
+      .tileSprite(GAME_WIDTH / 2, 414 - 36, Math.ceil(GAME_WIDTH / 3), 24, hillsKey)
       .setScale(3)
       .setScrollFactor(0)
       .setDepth(-10);
@@ -430,8 +469,9 @@ export default class GameScene extends Phaser.Scene {
     if (type === 'question') {
       this.openQuestionBlock(block);
     } else if (type === 'brick') {
-      // classic rule: only BIG or FIRE can smash bricks — small just bonks
-      if (this.player.powerState === 'SMALL') this.bumpBlock(block);
+      // classic rule: only BIG or FIRE can smash bricks — small just bonks.
+      // Exception (SMW-port): a spin jump smashes even when SMALL.
+      if (this.player.powerState === 'SMALL' && !this.player.isSpinning) this.bumpBlock(block);
       else this.breakBrick(block);
     }
   }
@@ -458,7 +498,7 @@ export default class GameScene extends Phaser.Scene {
         onComplete: () => coin.destroy(),
       });
     } else if (content === 'powerup') {
-      if (this.player.powerState === 'SMALL') this.spawnWalkingItem(block, 'mushroom', 'tiles', T.MUSHROOM);
+      if (this.player.powerState === 'SMALL') this.spawnWalkingItem(block, 'mushroom', 'poutine');
       else this.spawnFireGem(block);
     } else if (content === 'star') {
       this.spawnStar(block);
@@ -518,7 +558,7 @@ export default class GameScene extends Phaser.Scene {
     this.consume(block.getData('key'));
     this.bumpBlock(block);
     player.body.setVelocityY(50); // head bonk
-    this.spawnWalkingItem(block, 'oneup', 'mushroom-1up');
+    this.spawnWalkingItem(block, 'oneup', 'poutine-1up');
   }
 
   // -------------------------------------------------------------- items
@@ -539,7 +579,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  /** Mushroom-style item: slides, bounces off walls, falls off edges. */
+  /** Poutine-lunch item: slides, bounces off walls, falls off edges. */
   spawnWalkingItem(block, kind, texture, frame) {
     const item = this.items.create(block.x, block.y, texture, frame);
     item.setData('kind', kind);
@@ -633,7 +673,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // ---------------------------------------------------------- fireballs
+  // ---------------------------------------------------------- thrown axes
 
   shootFireball() {
     const active = this.fireballs.getChildren().filter((f) => f.active).length;
@@ -641,7 +681,7 @@ export default class GameScene extends Phaser.Scene {
 
     sfx.play('fireball');
     const dir = this.player.flipX ? -1 : 1;
-    const ball = this.fireballs.create(this.player.x + dir * 14, this.player.y, 'fireball');
+    const ball = this.fireballs.create(this.player.x + dir * 14, this.player.y, 'axe');
     ball.setDepth(2);
     ball.setCircle(5);
     ball.setVelocity(dir * FIREBALL_SPEED, 80);
@@ -653,7 +693,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onFireballBounce(a, b) {
-    const ball = a.texture && a.texture.key === 'fireball' ? a : b;
+    const ball = a.texture && a.texture.key === 'axe' ? a : b;
     if (ball.body.blocked.left || ball.body.blocked.right) {
       this.poof(ball);
     } else if (ball.body.blocked.down) {
@@ -714,6 +754,15 @@ export default class GameScene extends Phaser.Scene {
       sfx.play('stomp');
       enemy.knockAway(player.x);
       this.addScore(SCORE_STAR_KILL, enemy.x, enemy.y - 16);
+      return;
+    }
+
+    // SMW-port: spinning kills on ANY contact (side or top) and bounces.
+    if (player.isSpinning) {
+      sfx.play('stomp');
+      enemy.knockAway(player.x);
+      this.addScore(SCORE_STOMP, enemy.x, enemy.y - 16);
+      player.body.setVelocityY(STOMP_BOUNCE);
       return;
     }
 
@@ -820,7 +869,7 @@ export default class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: this.flagSprite, y: bottomY - TILE, duration: 700 });
     this.tweens.add({
       targets: player,
-      y: bottomY - 12 * player.scale,
+      y: bottomY - FRAME_HALF_H * player.scale,
       duration: 400 + ratio * 500,
       onComplete: () => {
         player.body.enable = true;
@@ -905,9 +954,11 @@ export default class GameScene extends Phaser.Scene {
 
   setupInput() {
     this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,SHIFT,X');
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,SHIFT,X,C,K,M');
     this.jumpWasHeld = false;
     this.fireWasHeld = false;
+    this.spinWasHeld = false;
+    this.muteWasHeld = false;
   }
 
   // -------------------------------------------------------------- update
@@ -927,7 +978,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.autoPhase === 'walk') {
       // auto-walk to the castle door after the flag slide
-      this.player.handleInput({ left: false, right: true, jumpHeld: false, jumpPressed: false });
+      this.player.handleInput({ left: false, right: true, jumpHeld: false, jumpPressed: false, runHeld: true, spinPressed: false });
       if (this.doorX === null || this.player.x >= this.doorX - 2) this.finishLevel();
       return;
     }
@@ -945,10 +996,24 @@ export default class GameScene extends Phaser.Scene {
 
     const jumpPressed = jumpHeld && !this.jumpWasHeld;
     const firePressed = fireHeld && !this.fireWasHeld;
+    // Spin (SMW-port): dedicated key (C/K) or Down+jump
+    // (touch-friendly: hold ▼, tap A). Matches SMW A-button spin.
+    // Note: NOT fire+jump — fire is the run modifier, and a running
+    // jump must stay a normal jump.
+    const spinHeld = this.keys.C.isDown || this.keys.K.isDown;
+    const spinPressed = (spinHeld && !this.spinWasHeld) || (down && jumpPressed);
     this.jumpWasHeld = jumpHeld;
     this.fireWasHeld = fireHeld;
+    this.spinWasHeld = spinHeld;
 
-    this.player.handleInput({ left, right, jumpHeld, jumpPressed });
+    // Mute (SMW-port: M key, mirrors SuperMarioWorldJS controls.js)
+    const muteHeld = this.keys.M.isDown;
+    if (muteHeld && !this.muteWasHeld) sfx.toggleMute();
+    this.muteWasHeld = muteHeld;
+
+    // Run modifier (SMW-port: hold fire/Y to sprint, like the classics)
+    const runHeld = fireHeld;
+    this.player.handleInput({ left, right, jumpHeld, jumpPressed, runHeld, spinPressed });
 
     if (firePressed && this.player.powerState === 'FIRE' && !this.player.isTransforming) {
       this.shootFireball();

@@ -3,11 +3,12 @@ import level2 from './level2.js';
 import level3 from './level3.js';
 import level4 from './level4.js';
 import level5 from './level5.js';
+import smw_yoshi1 from './smw_yoshi1.js';
 import bonus11 from './bonus11.js';
 import bonus15 from './bonus15.js';
 
-// World 1: level1 → level5, chained via each level's `next` field.
-export const LEVELS = { level1, level2, level3, level4, level5, bonus11, bonus15 };
+// World 1: level1 → level5 → smw_yoshi1 (SMW-port finale), chained via `next`.
+export const LEVELS = { level1, level2, level3, level4, level5, smw_yoshi1, bonus11, bonus15 };
 
 // Visual themes — picked per level via its `theme` field.
 // Frames refer to the 'tiles' spritesheet.

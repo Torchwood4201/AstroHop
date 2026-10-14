@@ -1,12 +1,12 @@
 import { sparse, ground, gap } from './builder.js';
 
-// WORLD 1-3 — athletic: island hopping over seven pits, high platform
+// CAMP 1-3 — athletic: island hopping over seven pits, high platform
 // routes with coin trails, and one wide final gap with a platform aid.
 
 const W = 260;
 
 export default {
-  name: 'WORLD 1-3',
+  name: 'CAMP 1-3',
   theme: 'overworld',
   next: 'level4',
   width: W,

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { sfx } from '../audio/sfx.js';
 
-// The in-game HUD: SCORE, COINS, WORLD, TIME, LIVES + pause/fullscreen.
+// The in-game HUD: SCORE, COINS, CAMP, TIME, LIVES + pause/fullscreen.
 // Laid out from the CURRENT game width (the logical view is narrower on
 // phones in portrait) and re-laid out whenever the size changes.
 export default class HUDScene extends Phaser.Scene {
@@ -23,7 +23,7 @@ export default class HUDScene extends Phaser.Scene {
     this.labels = {
       score: mkText('SCORE', '#cfe8ff'),
       coins: mkText('COINS', '#cfe8ff'),
-      world: mkText('WORLD', '#cfe8ff'),
+      world: mkText('CAMP', '#cfe8ff'),
       time: mkText('TIME', '#cfe8ff'),
       lives: mkText('LIVES', '#cfe8ff'),
     };
@@ -35,7 +35,7 @@ export default class HUDScene extends Phaser.Scene {
       lives: mkText('', '#ffffff'),
     };
     this.coinIcon = this.add.sprite(0, 0, 'tiles', 151).play('coin-spin').setScale(0.9);
-    this.livesIcon = this.add.sprite(0, 0, 'chars', 0).setScale(0.8);
+    this.livesIcon = this.add.sprite(0, 0, 'jack-0').setScale(0.8);
 
     const corner = (txt, onTap) => {
       const btn = this.add

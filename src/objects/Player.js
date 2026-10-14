@@ -3,15 +3,24 @@ import { sfx } from '../audio/sfx.js';
 
 // ---- Movement tuning (the "game feel" numbers) ----
 const ACCELERATION = 1600;
+const RUN_ACCELERATION = 2200; // holding run (fire button) accelerates harder
 const DRAG = 1300;
-const MAX_RUN_SPEED = 240;
+const MAX_RUN_SPEED = 240; // walk cap — the classic pace
+const MAX_SPRINT_SPEED = 330; // run cap while holding run (SMW Y-button style)
 const MAX_FALL_SPEED = 900;
-const JUMP_VELOCITY = -480;
+const JUMP_VELOCITY = -480; // base; scaled up with horizontal speed (SMW-style)
+const SPIN_VELOCITY = -380; // spin jump is shorter by design (SMW-style)
 const JUMP_CUT_VELOCITY = -160;
+const SPIN_CUT_VELOCITY = -140;
 const EXTRA_FALL_GRAVITY = 900;
 
+// ---- Sprite frame geometry: the SNES-size jack is 24x32, origin centre.
+// Physics anchors the body bottom to the frame bottom (the boots).
+export const FRAME_HALF_W = 12;
+export const FRAME_HALF_H = 16;
+
 // ---- Power-up tuning ----
-const BIG_SCALE = 1.5; // ~2 tiles tall, like classic big Mario
+const BIG_SCALE = 1.5; // ~2 tiles tall — the lumberjack stands TALL after lunch
 const STAR_DURATION = 8000;
 const STAR_WARNING = 2000; // flash faster during the last 2s
 const HURT_INVULN_DURATION = 2000;
@@ -20,7 +29,7 @@ const STAR_TINTS = [0xffffff, 0xffe066, 0x66e0ff, 0xff8de1, 0x9dff8d, 0xffa05c];
 /**
  * The player, with a small state machine for power-ups:
  *
- *   SMALL ──mushroom──▶ BIG ──fire gem──▶ FIRE
+ *   SMALL ──poutine──▶ BIG ──ember──▶ EMBER (throws axes)
  *     ▲                  │                  │
  *     └────hit───────────┘◀───────hit───────┘   (SMALL + hit = death)
  *
@@ -30,7 +39,7 @@ const STAR_TINTS = [0xffffff, 0xffe066, 0x66e0ff, 0xff8de1, 0x9dff8d, 0xffa05c];
  */
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
-    super(scene, x, y, 'chars', 0);
+    super(scene, x, y, 'jack-0');
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -42,6 +51,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.jumpWasHeld = false;
     this.wasOnFloor = true;
     this.stretchTween = null;
+    // SMW-port: jumpType 0 = grounded, 1 = normal jump, 2 = spin jump.
+    this.jumpType = 0;
+    this.isSpinning = false;
 
     this.setDepth(2); // in front of items (1), terrain (0) and the sky (-10)
     this.setCollideWorldBounds(true);
@@ -54,7 +66,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     return this.scene && this.scene.time.now < this.starUntil;
   }
 
-  /** FIRE uses the orange character's animations — a Kenney palette swap. */
+  /** EMBER uses the blaze-orange shirt animations — a campfire palette swap. */
   get animPrefix() {
     return this.powerState === 'FIRE' ? 'fire' : 'player';
   }
@@ -111,22 +123,22 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     // rises with scaleY — anchoring the body to the frame bottom would
     // lift it off the floor (and re-trigger landing forever). Anchor the
     // body bottom to the at-rest feet position instead:
-    //   bodyBottom = y + 12 * baseScale   (constant for any squash)
-    const offY = 12 + (12 * this.baseScale) / this.scaleY - unitH;
-    this.body.setOffset((24 - unitW) / 2, offY);
+    //   bodyBottom = y + FRAME_HALF_H * baseScale   (constant for any squash)
+    const offY = FRAME_HALF_H + (FRAME_HALF_H * this.baseScale) / this.scaleY - unitH;
+    this.body.setOffset((FRAME_HALF_W * 2 - unitW) / 2, offY);
   }
 
   // ------------------------------------------------------- transitions
 
-  /** Mushroom collected while SMALL. */
+  /** Poutine collected while SMALL. */
   grow() {
     this.changeState('BIG');
   }
 
-  /** Fire gem collected. */
+  /** Ember collected. */
   upgradeToFire() {
-    // Edge case: gem grabbed while SMALL (e.g. after getting hit while
-    // it was on its block) — one step up, like the mushroom.
+    // Edge case: ember grabbed while SMALL (e.g. after getting hit while
+    // it was on its block) — one step up, like the poutine.
     this.changeState(this.powerState === 'SMALL' ? 'BIG' : 'FIRE');
   }
 
@@ -149,20 +161,20 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   /**
-   * Shared transition: brief freeze-frame (physics paused, like classic
-   * Mario) + a scale pulse, with the feet kept planted on the ground.
+   * Shared transition: brief freeze-frame (physics paused, like the
+   * classics) + a scale pulse, with the feet kept planted on the ground.
    */
   changeState(newState) {
     if (this.isTransforming || newState === this.powerState) return;
     this.isTransforming = true;
     if (this.stretchTween) this.stretchTween.stop(); // both animate scale
 
-    // Feet sit at the frame bottom: screenY = y + 12 * scale.
+    // Feet sit at the frame bottom: screenY = y + FRAME_HALF_H * scale.
     // Keep them planted when the scale changes.
-    const oldFeet = this.y + 12 * this.scale;
+    const oldFeet = this.y + FRAME_HALF_H * this.scale;
     this.powerState = newState;
     this.applyState();
-    this.y = oldFeet - 12 * this.scale;
+    this.y = oldFeet - FRAME_HALF_H * this.scale;
     this.body.reset(this.x, this.y); // snap the body to the new position
 
     this.scene.physics.world.pause();
@@ -190,6 +202,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   /** Death visuals: flip and fall through the world (scene handles restart). */
   die() {
     this.isDead = true;
+    this.isSpinning = false;
+    this.setAngle(0);
     this.body.checkCollision.none = true;
     this.setCollideWorldBounds(false);
     this.body.setAccelerationX(0);
@@ -202,35 +216,90 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   // ----------------------------------------------------------- updates
 
   /** Called by GameScene every frame with the merged input state. */
-  handleInput({ left, right, jumpHeld, jumpPressed }) {
+  handleInput({ left, right, jumpHeld, jumpPressed, runHeld = false, spinPressed = false }) {
     if (this.isDead || this.isTransforming) return;
 
     const body = this.body;
     const onGround = body.onFloor();
+    if (onGround) {
+      this.jumpType = 0;
+      if (this.isSpinning) this.stopSpin();
+    }
+
+    // Run modifier (SMW Y-button): holding fire while moving raises the
+    // speed cap + acceleration. Tapping fire still shoots (GameScene).
+    const maxSpeed = runHeld ? MAX_SPRINT_SPEED : MAX_RUN_SPEED;
+    const accel = runHeld ? RUN_ACCELERATION : ACCELERATION;
+    body.setMaxVelocity(maxSpeed, MAX_FALL_SPEED);
 
     if (left && !right) {
-      body.setAccelerationX(-ACCELERATION);
+      body.setAccelerationX(-accel);
       this.setFlipX(true);
     } else if (right && !left) {
-      body.setAccelerationX(ACCELERATION);
+      body.setAccelerationX(accel);
       this.setFlipX(false);
     } else {
       body.setAccelerationX(0);
     }
 
-    if (jumpPressed && onGround) {
-      body.setVelocityY(JUMP_VELOCITY);
+    // Spin jump (SMW A-button): shorter, breaks bricks even when SMALL,
+    // kills on side contact (see GameScene). Triggered by the spin key
+    // or by holding run/fire and pressing jump.
+    if (spinPressed && onGround) {
+      this.doSpinJump();
+    } else if (jumpPressed && onGround) {
+      // normal jump uses full speed-scaled velocity
+      body.setVelocityY(this.scaledJump(JUMP_VELOCITY, false));
+      this.jumpType = 1;
       sfx.play('jump');
       this.squashStretch(0.82, 1.18); // stretch tall on take-off
     }
-    if (!jumpHeld && body.velocity.y < JUMP_CUT_VELOCITY) {
-      body.setVelocityY(JUMP_CUT_VELOCITY);
+    const cutAt = this.isSpinning ? SPIN_CUT_VELOCITY : JUMP_CUT_VELOCITY;
+    if (!jumpHeld && body.velocity.y < cutAt) {
+      body.setVelocityY(cutAt);
     }
     body.setGravityY(body.velocity.y > 0 ? EXTRA_FALL_GRAVITY : 0);
 
-    if (!onGround) this.anims.play(`${this.animPrefix}-jump`, true);
+    if (this.isSpinning) {
+      this.anims.play(`${this.animPrefix}-spin`, true);
+      // visual spin: rotate while airborne (reset on landing)
+      this.angle += 360 / 12;
+    } else if (!onGround) this.anims.play(`${this.animPrefix}-jump`, true);
     else if (Math.abs(body.velocity.x) > 10) this.anims.play(`${this.animPrefix}-run`, true);
     else this.anims.play(`${this.animPrefix}-idle`, true);
+  }
+
+  /**
+   * Speed-scaled jump velocity (SMW-port): the faster you run, the higher
+   * you jump. Thresholds mirror SuperMarioWorldJS mechanics.js
+   * (|vx| >= 125 fast, >= 75 medium), rescaled to Timber Hop speeds.
+   */
+  scaledJump(base, isSpin) {
+    const speed = Math.abs(this.body.velocity.x);
+    if (isSpin) {
+      if (speed >= 200) return -420;
+      if (speed >= 120) return -400;
+      return SPIN_VELOCITY;
+    }
+    if (speed >= 200) return -530;
+    if (speed >= 120) return -505;
+    return base;
+  }
+
+  doSpinJump() {
+    this.body.setVelocityY(this.scaledJump(SPIN_VELOCITY, true));
+    this.jumpType = 2;
+    this.isSpinning = true;
+    this.angle = 0;
+    sfx.play('spin');
+    this.squashStretch(0.82, 1.18);
+  }
+
+  stopSpin() {
+    this.isSpinning = false;
+    this.angle = 0;
+    this.setAngle(0);
+    if (this.jumpType === 2) this.jumpType = 0;
   }
 
   preUpdate(time, delta) {
@@ -239,7 +308,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     // Landing: squash flat for a moment
     if (!this.isDead && this.body) {
       const onFloor = this.body.onFloor();
-      if (onFloor && !this.wasOnFloor) this.squashStretch(1.18, 0.82);
+      if (onFloor && !this.wasOnFloor) {
+        if (this.isSpinning) this.stopSpin();
+        else this.squashStretch(1.18, 0.82);
+      }
       this.wasOnFloor = onFloor;
     }
 

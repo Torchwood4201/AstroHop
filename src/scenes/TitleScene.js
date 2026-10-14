@@ -52,10 +52,10 @@ export default class TitleScene extends Phaser.Scene {
     this.add.image(80, 414, 'tiles', 125).setOrigin(0.5, 1); // bush
     this.add.image(620, 414, 'tiles', 126).setOrigin(0.5, 1); // pine
 
-    // patrolling walkers
+    // patrolling beavers
     [{ from: 230, to: 470, y: 402, d: 5200 }, { from: 320, to: 180, y: 402, d: 3400 }].forEach(
       ({ from, to, y, d }) => {
-        const w = this.add.sprite(from, y, 'chars', 18).play('walker-walk');
+        const w = this.add.sprite(from, y, 'beaver-0').play('walker-walk');
         w.setFlipX(to > from);
         this.tweens.add({
           targets: w,
@@ -69,19 +69,19 @@ export default class TitleScene extends Phaser.Scene {
       }
     );
 
-    // the hero, idling by the logo
-    this.add.sprite(120, 398, 'chars', 0).play('player-idle').setScale(1.5);
+    // the jack, idling by the logo
+    this.add.sprite(120, 398, 'jack-0').play('player-idle').setScale(1.5);
 
     // --- logo + texts
     const logo = this.add
-      .text(width / 2, 120, 'ASTRO HOP', {
+      .text(width / 2, 120, 'TIMBER HOP', {
         fontFamily: 'monospace',
         fontSize: '64px',
         fontStyle: 'bold',
         color: '#ffe066',
       })
       .setOrigin(0.5)
-      .setStroke('#7a3045', 10)
+      .setStroke('#5e1c28', 10)
       .setShadow(0, 6, '#00000055', 0, true, true);
     this.tweens.add({
       targets: logo,
@@ -93,7 +93,7 @@ export default class TitleScene extends Phaser.Scene {
     });
 
     this.add
-      .text(width / 2, 168, 'A RETRO PLATFORMER', {
+      .text(width / 2, 168, 'A LUMBERJACK TALE, EH?', {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: '#ffffff',

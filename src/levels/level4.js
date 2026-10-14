@@ -1,12 +1,12 @@
 import { sparse, ground, gap } from './builder.js';
 
-// WORLD 1-4 — snow: icy ground (low friction — watch your stops!),
+// CAMP 1-4 — frozen north: icy ground (low friction — watch your stops!),
 // snowmen, and platform hops between drifts.
 
 const W = 240;
 
 export default {
-  name: 'WORLD 1-4',
+  name: 'CAMP 1-4',
   theme: 'snow',
   next: 'level5',
   width: W,

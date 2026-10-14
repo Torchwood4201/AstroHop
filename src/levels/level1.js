@@ -1,13 +1,13 @@
 import { sparse, ground, gap } from './builder.js';
 
-// WORLD 1-1 — overworld, ~6.3 screens wide.
+// CAMP 1-1 — timberland, ~6.3 screens wide.
 // Rows are bottom-anchored: the last row is the bottom of the world.
 // See LEVELS.md for the character legend.
 
 const W = 280;
 
 export default {
-  name: 'WORLD 1-1',
+  name: 'CAMP 1-1',
   theme: 'overworld',
   next: 'level2',
   // the 't' pipe leads to the bonus room and its exit drops you at col 168

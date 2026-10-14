@@ -1,6 +1,6 @@
 {
-  "name": "astro-hop",
-  "description": "Astro Hop — a Mario-style retro 2D platformer built with Phaser 3 and Vite. Desktop + mobile, synthesized audio, data-driven levels.",
+  "name": "timber-hop",
+  "description": "Timber Hop — a Canadian lumberjack retro 2D platformer built with Phaser 3 and Vite. Desktop + mobile, synthesized audio, data-driven levels.",
   "private": true,
   "version": "1.0.0",
   "license": "MIT",

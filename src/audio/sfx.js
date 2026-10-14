@@ -108,6 +108,10 @@ class Sfx {
       case 'jump':
         this.tone({ from: 180, to: 520, dur: 0.18, vol: 0.2 });
         break;
+      case 'spin':
+        this.tone({ from: 250, to: 700, dur: 0.16, vol: 0.2 });
+        this.tone({ from: 500, to: 900, dur: 0.12, delay: 0.05, vol: 0.15 });
+        break;
       case 'coin':
         this.tone({ from: 988, dur: 0.07, vol: 0.2 });
         this.tone({ from: 1319, dur: 0.22, delay: 0.07, vol: 0.2 });

@@ -15,7 +15,7 @@ export default class EndScene extends Phaser.Scene {
     saveHighScore(this.registry.get('score') ?? 0);
 
     this.add
-      .text(width / 2, height / 2 - 60, 'WORLD 1 COMPLETE!', {
+      .text(width / 2, height / 2 - 60, 'CAMP 1 COMPLETE!', {
         fontFamily: 'monospace',
         fontSize: '40px',
         fontStyle: 'bold',
@@ -24,7 +24,7 @@ export default class EndScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, height / 2, 'THANK YOU FOR PLAYING — WORLD 2 COMING SOON', {
+      .text(width / 2, height / 2, 'THANK YOU FOR PLAYING — CAMP 2 COMING SOON', {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: '#ffffff',

@@ -1,14 +1,14 @@
 import { sparse, ground, gap } from './builder.js';
 
-// WORLD 1-5 — the finale: an enemy gauntlet, a second secret room,
+// CAMP 1-5 — the finale: a beaver gauntlet, a second secret room,
 // double-deck bricks, and a 5-step launch staircase before the flag.
 
 const W = 300;
 
 export default {
-  name: 'WORLD 1-5',
+  name: 'CAMP 1-5',
   theme: 'overworld',
-  next: 'end',
+  next: 'smw_yoshi1',
   time: 400,
   secret: { room: 'bonus15', exitCol: 230 },
   width: W,
